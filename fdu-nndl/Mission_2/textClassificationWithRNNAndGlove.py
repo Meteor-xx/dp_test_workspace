@@ -59,6 +59,8 @@ class RNN(nn.Module):
         combined = torch.cat((input, hidden), 1)  # 输入包括当前输入和以前的隐藏状态
         hidden = self.i2h(combined)  # 更新hidden层，留给下一次训练当作输入
         output = self.i2o(combined)  # 隐层输出
+        # 此处使用softmax,因为LOSS函数使用的是NLLLOSS，需要log加softmax归一。可使用torch.nn.CrossEntropyLoss替代
+        # torch.nn.CrossEntropyLoss等价于softmax + log + nllloss
         output = self.softmax(output)  # 对隐层输出作softmax（即输出层激活函数）
         return output, hidden
 
@@ -107,10 +109,9 @@ def train_model(result, sentence):
             input_char = glove_model[input_sentence[k]]  # 将单词转化为词向量
             input_char = np.mat(input_char)  # 改变向量格式，把一维数组改为1*len(input)的二维矩阵，这是pytorch要求的输入格式
             input_char = torch.from_numpy(input_char).float()  # 注意数据类型
-
             model_output, hidden = rnn(input_char, hidden)
-            # print(model_output)
-            # print(result)
+            print(model_output)
+            print(result)
         except Exception as e:
             input_char = torch.zeros(1, len(test)).float()  # 假如GloVe中没有对应的单词，直接用全0向量代替
             model_output, hidden = rnn(input_char, hidden)
