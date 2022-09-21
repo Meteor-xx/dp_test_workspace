@@ -59,7 +59,7 @@ def word_mapping(sentences, lower):
     """
     words = [[x[0].lower() if lower else x[0] for x in s] for s in sentences]
     dico = create_dico(words)
-    dico['<UNK>'] = 10000000
+    # dico['<UNK>'] = 10000000
     word_to_id, id_to_word = create_mapping(dico)
     print("Found %i unique words (%i in total)" % (len(dico), sum(len(x) for x in words)))
     return dico, word_to_id, id_to_word
@@ -154,7 +154,7 @@ def prepare_dataset(sentences, word_to_id, char_to_id, tag_to_id, lower=False):
     data = []
     for s in sentences:
         str_words = [w[0] for w in s]
-        words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
+        words = [word_to_id[f(w) if f(w) in word_to_id else '<unk>']
                  for w in str_words]
         # Skip characters that are not in the training set
         chars = [[char_to_id[c] for c in w if c in char_to_id]
@@ -171,3 +171,38 @@ def prepare_dataset(sentences, word_to_id, char_to_id, tag_to_id, lower=False):
     return data
 
 
+# LSTM模型训练的时候需要在word2id和tag2id加入PAD和UNK
+# 如果是加了CRF的lstm还要加入<start>和<end> (解码的时候需要用到)
+def extend_maps(word_to_id, tag_to_id, char_to_id, for_crf=True):
+    word_to_id['<unk>'] = len(word_to_id)
+    word_to_id['<pad>'] = len(word_to_id)
+    tag_to_id['<unk>'] = len(tag_to_id)
+    tag_to_id['<pad>'] = len(tag_to_id)
+    char_to_id['<unk>'] = len(char_to_id)
+    char_to_id['<pad>'] = len(char_to_id)
+    # 如果是加了CRF的bilstm  那么还要加入<start> 和 <end>token
+    if for_crf:
+        word_to_id['<start>'] = len(word_to_id)
+        word_to_id['<end>'] = len(word_to_id)
+        tag_to_id['<start>'] = len(tag_to_id)
+        tag_to_id['<end>'] = len(tag_to_id)
+        char_to_id['<start>'] = len(char_to_id)
+        char_to_id['<end>'] = len(char_to_id)
+
+    print("Maps extended!" if not for_crf else "Maps extended for CRF!")
+    print("Found %i unique words" % len(word_to_id))
+    print("Found %i unique characters" % len(char_to_id))
+    print("Found %i unique named entity tags" % len(tag_to_id))
+    return word_to_id, tag_to_id, char_to_id
+
+
+def prepocess_data_for_lstmcrf(data, word_to_id, tag_to_id, char_to_id, test=False):
+    for i in range(len(data)):
+        data[i]['str_words'].append("<end>")
+        data[i]['words'].append(word_to_id['<end>'])
+        data[i]['chars'].append([char_to_id['<end>']])
+        data[i]['caps'].append(0)
+        if not test:  # 如果是测试数据，就不需要加end token了
+            data[i]['tags'].append(tag_to_id['<end>'])
+
+    return data

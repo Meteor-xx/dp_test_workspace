@@ -4,6 +4,8 @@ import os
 from collections import OrderedDict
 
 import loader
+from NER.NER2016withPytorch.evaluate import bilstm_train_and_eval
+from models.config import LSTMConfig
 
 # Read parameters from command line
 from NER.NER2016withPytorch.utils import save_mappings
@@ -168,6 +170,12 @@ else:
 dico_chars, char_to_id, id_to_char = loader.char_mapping(train_sentences)
 dico_tags, tag_to_id, id_to_tag = loader.tag_mapping(train_sentences)
 
+# 如果是加了CRF的lstm还要加入<start>和<end> (解码的时候需要用到)
+if LSTMConfig.for_crf:
+    word_to_id, tag_to_id, char_to_id = loader.extend_maps(word_to_id, tag_to_id, char_to_id)
+else:
+    word_to_id, tag_to_id, char_to_id = loader.extend_maps(word_to_id, tag_to_id, char_to_id, for_crf=False)
+
 # Index data
 train_data = loader.prepare_dataset(
     train_sentences, word_to_id, char_to_id, tag_to_id, lower
@@ -179,11 +187,20 @@ test_data = loader.prepare_dataset(
     test_sentences, word_to_id, char_to_id, tag_to_id, lower
 )
 
+# 还需要额外的一些数据处理
+train_data = loader.prepocess_data_for_lstmcrf(train_data, word_to_id, tag_to_id, char_to_id)
+dev_data = loader.prepocess_data_for_lstmcrf(dev_data, word_to_id, tag_to_id, char_to_id)
+test_data = loader.prepocess_data_for_lstmcrf(test_data, word_to_id, tag_to_id, char_to_id, test=True)
 print("%i / %i / %i sentences in train / dev / test." % (len(train_data), len(dev_data), len(test_data)))
 
 # Save the mappings to disk
 print('Saving the mappings to disk...')
 save_mappings(opts.mapping_path, id_to_word, id_to_char, id_to_tag)
+
+# print(tag_to_id)
+# {'O': 0, 'S-LOC': 1, 'B-PER': 2, 'E-PER': 3, 'S-ORG': 4, 'S-MISC': 5, 'B-ORG': 6, 'E-ORG': 7, 'S-PER': 8,
+# 'I-ORG': 9, 'B-LOC': 10, 'E-LOC': 11, 'B-MISC': 12, 'E-MISC': 13, 'I-MISC': 14, 'I-PER': 15, 'I-LOC': 16,
+# '<unk>': 17, '<pad>': 18, '<start>': 19, '<end>': 20}
 
 # print(train_data[0])
 # Dataset's format
@@ -199,5 +216,12 @@ save_mappings(opts.mapping_path, id_to_word, id_to_char, id_to_tag)
 ############################################################################
 # Using pytorch instead of theano to realize the same architecture of tagger
 ############################################################################
+
+lstmcrf_pred = bilstm_train_and_eval(
+    train_data,
+    dev_data,
+    test_data,
+    word_to_id, tag_to_id
+)
 
 

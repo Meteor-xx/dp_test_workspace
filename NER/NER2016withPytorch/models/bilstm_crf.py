@@ -51,7 +51,7 @@ class BILSTM_Model(object):
 
     def train(self, word_lists, tag_lists,
               dev_word_lists, dev_tag_lists,
-              word2id, tag2id):
+              word_to_id, tag_to_id):
         # 对数据集按照长度进行排序
         word_lists, tag_lists, _ = sort_by_lengths(word_lists, tag_lists)
         dev_word_lists, dev_tag_lists, _ = sort_by_lengths(
@@ -61,12 +61,12 @@ class BILSTM_Model(object):
         for e in range(1, self.epoches+1):
             self.step = 0
             losses = 0.
-            for ind in range(0, len(word_lists), B):
+            for ind in range(0, len(word_lists), B):  # 每次训练一个batch
                 batch_sents = word_lists[ind:ind+B]
                 batch_tags = tag_lists[ind:ind+B]
 
                 losses += self.train_step(batch_sents,
-                                          batch_tags, word2id, tag2id)
+                                          batch_tags, word_to_id, tag_to_id)
 
                 if self.step % TrainingConfig.print_step == 0:
                     total_step = (len(word_lists) // B + 1)
@@ -79,16 +79,16 @@ class BILSTM_Model(object):
 
             # 每轮结束测试在验证集上的性能，保存最好的一个
             val_loss = self.validate(
-                dev_word_lists, dev_tag_lists, word2id, tag2id)
+                dev_word_lists, dev_tag_lists, word_to_id, tag_to_id)
             print("Epoch {}, Val Loss:{:.4f}".format(e, val_loss))
 
-    def train_step(self, batch_sents, batch_tags, word2id, tag2id):
+    def train_step(self, batch_sents, batch_tags, word_to_id, tag_to_id):
         self.model.train()
         self.step += 1
         # 准备数据
-        tensorized_sents, lengths = tensorized(batch_sents, word2id)
+        tensorized_sents, lengths = tensorized(batch_sents, word_to_id)
         tensorized_sents = tensorized_sents.to(self.device)
-        targets, lengths = tensorized(batch_tags, tag2id)
+        targets, lengths = tensorized(batch_tags, tag_to_id)
         targets = targets.to(self.device)
 
         # forward
@@ -96,13 +96,13 @@ class BILSTM_Model(object):
 
         # 计算损失 更新参数
         self.optimizer.zero_grad()
-        loss = self.cal_loss_func(scores, targets, tag2id).to(self.device)
+        loss = self.cal_loss_func(scores, targets, tag_to_id).to(self.device)
         loss.backward()
         self.optimizer.step()
 
         return loss.item()
 
-    def validate(self, dev_word_lists, dev_tag_lists, word2id, tag2id):
+    def validate(self, dev_word_lists, dev_tag_lists, word_to_id, tag_to_id):
         self.model.eval()
         with torch.no_grad():
             val_losses = 0.
@@ -113,17 +113,17 @@ class BILSTM_Model(object):
                 batch_sents = dev_word_lists[ind:ind+self.batch_size]
                 batch_tags = dev_tag_lists[ind:ind+self.batch_size]
                 tensorized_sents, lengths = tensorized(
-                    batch_sents, word2id)
+                    batch_sents, word_to_id)
                 tensorized_sents = tensorized_sents.to(self.device)
-                targets, lengths = tensorized(batch_tags, tag2id)
+                targets, lengths = tensorized(batch_tags, tag_to_id)
                 targets = targets.to(self.device)
 
                 # forward
-                scores = self.model(tensorized_sents, lengths)
+                scores = self.model.forward(tensorized_sents, lengths)
 
                 # 计算损失
                 loss = self.cal_loss_func(
-                    scores, targets, tag2id).to(self.device)
+                    scores, targets, tag_to_id).to(self.device)
                 val_losses += loss.item()
             val_loss = val_losses / val_step
 

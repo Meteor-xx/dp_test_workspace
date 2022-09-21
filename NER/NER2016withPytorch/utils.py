@@ -59,7 +59,7 @@ def iob_iobes(tags):
 
 def create_dico(item_list):
     """
-    Create a dictionary of items from a list of list of items.
+    Create a dictionary of items from a list of items.
     """
     assert type(item_list) is list
     dico = {}
@@ -94,3 +94,19 @@ def save_mappings(mappings_path, id_to_word, id_to_char, id_to_tag):
             'id_to_tag': id_to_tag,
         }
         pickle.dump(mappings, f)
+
+
+def save_model(model, file_name):
+    """用于保存模型"""
+    with open(file_name, "wb") as f:
+        pickle.dump(model, f)
+
+
+def flatten_lists(lists):
+    flatten_list = []
+    for l in lists:
+        if type(l) == list:
+            flatten_list += l
+        else:
+            flatten_list.append(l)
+    return flatten_list

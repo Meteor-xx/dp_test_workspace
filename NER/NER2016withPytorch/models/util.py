@@ -85,19 +85,19 @@ def cal_loss(logits, targets, tag2id):
 # FOR BiLSTM-CRF
 
 
-def cal_lstm_crf_loss(crf_scores, targets, tag2id):
+def cal_lstm_crf_loss(crf_scores, targets, tag_to_id):
     """计算双向LSTM-CRF模型的损失
     该损失函数的计算可以参考:https://arxiv.org/pdf/1603.01360.pdf
     """
-    pad_id = tag2id.get('<pad>')
-    start_id = tag2id.get('<start>')
-    end_id = tag2id.get('<end>')
+    pad_id = tag_to_id['<pad>']
+    start_id = tag_to_id['<start>']
+    end_id = tag_to_id['<end>']
 
     device = crf_scores.device
 
     # targets:[B, L] crf_scores:[B, L, T, T]
     batch_size, max_len = targets.size()
-    target_size = len(tag2id)
+    target_size = len(tag_to_id)
 
     # mask = 1 - ((targets == pad_id) + (targets == end_id))  # [B, L]
     mask = (targets != pad_id)
