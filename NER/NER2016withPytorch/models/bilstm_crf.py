@@ -134,29 +134,29 @@ class BILSTM_Model(object):
 
             return val_loss
 
-    def test(self, word_lists, tag_lists, word2id, tag2id):
+    def test(self, word_lists, tag_lists, word_to_id, tag_to_id):
         """返回最佳模型在测试集上的预测结果"""
         # 准备数据
         word_lists, tag_lists, indices = sort_by_lengths(word_lists, tag_lists)
-        tensorized_sents, lengths = tensorized(word_lists, word2id)
+        tensorized_sents, lengths = tensorized(word_lists, word_to_id)
         tensorized_sents = tensorized_sents.to(self.device)
 
         self.best_model.eval()
         with torch.no_grad():
             batch_tagids = self.best_model.test(
-                tensorized_sents, lengths, tag2id)
+                tensorized_sents, lengths, tag_to_id)
 
         # 将id转化为标注
         pred_tag_lists = []
-        id2tag = dict((id_, tag) for tag, id_ in tag2id.items())
+        id_to_tag = dict((id_, tag) for tag, id_ in tag_to_id.items())
         for i, ids in enumerate(batch_tagids):
             tag_list = []
             if self.crf:
                 for j in range(lengths[i] - 1):  # crf解码过程中，end被舍弃
-                    tag_list.append(id2tag[ids[j].item()])
+                    tag_list.append(id_to_tag[ids[j].item()])
             else:
                 for j in range(lengths[i]):
-                    tag_list.append(id2tag[ids[j].item()])
+                    tag_list.append(id_to_tag[ids[j].item()])
             pred_tag_lists.append(tag_list)
 
         # indices存有根据长度排序后的索引映射的信息
@@ -167,7 +167,8 @@ class BILSTM_Model(object):
         indices, _ = list(zip(*ind_maps))
         pred_tag_lists = [pred_tag_lists[i] for i in indices]
         tag_lists = [tag_lists[i] for i in indices]
-
+        # print("*****Pred_tag_lists[0]*****", pred_tag_lists[0])
+        # print("*****tag_lists[0]*****", tag_lists[0])
         return pred_tag_lists, tag_lists
 
 
@@ -200,12 +201,12 @@ class BiLSTM_CRF(nn.Module):
 
         return crf_scores
 
-    def test(self, test_sents_tensor, lengths, tag2id):
+    def test(self, test_sents_tensor, lengths, tag_to_id):
         """使用维特比算法进行解码"""
-        start_id = tag2id['<start>']
-        end_id = tag2id['<end>']
-        pad = tag2id['<pad>']
-        tagset_size = len(tag2id)
+        start_id = tag_to_id['<start>']
+        end_id = tag_to_id['<end>']
+        pad = tag_to_id['<pad>']
+        tagset_size = len(tag_to_id)
 
         crf_scores = self.forward(test_sents_tensor, lengths)
         device = crf_scores.device
@@ -265,7 +266,7 @@ class BiLSTM_CRF(nn.Module):
             tags_t = tags_t.squeeze(1)
             tagids.append(tags_t.tolist())
 
-        # tagids:[L-1]（L-1是因为扣去了end_token),大小的liebiao
+        # tagids:[L-1]（L-1是因为扣去了end_token),大小的列表
         # 其中列表内的元素是该batch在该时刻的标记
         # 下面修正其顺序，并将维度转换为 [B, L]
         tagids = list(zip_longest(*reversed(tagids), fillvalue=pad))

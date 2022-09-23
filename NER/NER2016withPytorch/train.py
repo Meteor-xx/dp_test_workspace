@@ -166,6 +166,7 @@ else:
     dico_words, word_to_id, id_to_word = loader.word_mapping(train_sentences, lower)
     dico_words_train = dico_words
 
+# print("*****Train Sentences[0]*****\n", train_sentences[0])
 # Create a dictionary and a mapping for words / POS tags / tags
 dico_chars, char_to_id, id_to_char = loader.char_mapping(train_sentences)
 dico_tags, tag_to_id, id_to_tag = loader.tag_mapping(train_sentences)
@@ -187,6 +188,7 @@ test_data = loader.prepare_dataset(
     test_sentences, word_to_id, char_to_id, tag_to_id, lower
 )
 
+# print("*****train_data[0] *****", train_data[0])
 # 还需要额外的一些数据处理
 train_data = loader.prepocess_data_for_lstmcrf(train_data, word_to_id, tag_to_id, char_to_id)
 dev_data = loader.prepocess_data_for_lstmcrf(dev_data, word_to_id, tag_to_id, char_to_id)
@@ -221,7 +223,8 @@ lstmcrf_pred = bilstm_train_and_eval(
     train_data,
     dev_data,
     test_data,
-    word_to_id, tag_to_id
+    word_to_id, tag_to_id,
+    id_to_word, id_to_tag
 )
 
 

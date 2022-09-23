@@ -40,10 +40,13 @@ def tensorized(batch, maps):
     batch_tensor = torch.ones(batch_size, max_len).long() * PAD
     for i, l in enumerate(batch):
         for j, e in enumerate(l):
-            batch_tensor[i][j] = maps.get(e, UNK)
+            batch_tensor[i][j] = e
+            # 此处发现e即为转化为id的word_id不必再次get
+            # print("*****maps*****", maps)
+            # batch_tensor[i][j] = maps.get(e, UNK)
     # batch各个元素的长度
     lengths = [len(l) for l in batch]
-
+    # print("*****Batch_tensor*****", batch_tensor)
     return batch_tensor, lengths
 
 

@@ -12,6 +12,8 @@ class Metrics(object):
         self.golden_tags = flatten_lists(golden_tags)
         self.predict_tags = flatten_lists(predict_tags)
 
+        # print("*****golden_tags*****", golden_tags[0])
+        # print("*****predict_tags*****", predict_tags[0])
         if remove_O:  # 将O标记移除，只关心实体标记
             self._remove_Otags()
 
@@ -34,8 +36,10 @@ class Metrics(object):
 
         precision_scores = {}
         for tag in self.tagset:
+            # print("*****Correct_tags_number*****", self.correct_tags_number)
+            # 前几次train可能存在学习不到目标tag的问题，为避免出现分母为零的情况，选择在未出现目标tag时分母置1，同时正确Tag显然为0，0/1=0
             precision_scores[tag] = self.correct_tags_number.get(tag, 0) / \
-                self.predict_tags_counter[tag]
+                self.predict_tags_counter.get(tag, 1)
 
         return precision_scores
 
